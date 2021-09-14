@@ -1,0 +1,1 @@
+fasm boot.asm boot.bios.bin
