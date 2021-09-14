@@ -29,8 +29,15 @@ f_info:
     f_atime dq ?
 end virtual
 
-boot_msg db "Hi there! My OS boot loader have started to work!",13,10,0
+; bootloader data
+label sector_per_track word at $$ ; number of sectors per track
+label head_count byte at $$ + 2 ; number disk heads
+label disk_id byte at $$ + 3
 
+boot_msg db "Hi there! My OS boot loader have started to work!",13,10,0
+not_implemented_msg db "Not implemented",13,10,0
+
+; write a string DS:SI to the monitor
 write_str:
     push ax si
     mov ah, 0x0E
@@ -43,6 +50,25 @@ write_str:
  @@:
     pop si ax
     ret
+
+load_sector.error:
+	mov si, not_implemented_msg
+	call write_str
+	ret
+
+get_disk_parameters:
+	mov [disk_id], dl ; get bootable disk id
+	mov ah, 0x08
+	xor di, di ; ES is already zero
+	push es ; we don’t need a pointer to BIOS parameters block but we need zero ES
+	int 0x13
+	pop es
+	jc load_sector.error ; this function is not implemented for now
+	inc dh ; first heads number is 0, to get the length we need increment this one
+	mov [head_count], dh
+	and cx, 111111b ; select low 6 bits of CX
+	mov [sector_per_track], cx
+	ret
 
 start:
 
