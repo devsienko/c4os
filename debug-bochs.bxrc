@@ -1,0 +1,4 @@
+display_library: win32, options="gui_debug"
+megs: 64
+boot: floppy
+floppya: 1_44=boot.bios.bin, status=inserted
