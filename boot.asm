@@ -96,6 +96,37 @@ load_sector:
  @@:
     pop si dx cx bx ax
     ret
+; find a file by name DS:SI in directory DX:AX
+find_file:
+    push cx dx di
+ .find:
+    cmp ax, -1 ; is it the end of the list?
+    jne @f
+    cmp dx, -1
+    jne @f
+ .not_found: ;if it’s the end of the list and we didn’t find the file
+    call error
+    db "NOT FOUND",13,10,0
+ @@:
+    mov di, f_info
+    call load_sector ; load a sector with file info
+    push di ; get file name length (DI = f_info = f_name)
+    mov cx, 0xFFFF ; we don’t know string length, consider max (0xFFFF) length
+    xor al, al ; 0 is the end of string sign
+    repne scasb
+    neg cx ; get lenght of the string, some binary math magic
+    dec cx
+    pop di
+    push si ; compare file names
+    repe cmpsb
+    pop si
+    je .found ; if the file name are equal then we return
+    mov ax, word[f_next] ; load next file info sector
+    mov dx, word[f_next + 2]
+    jmp .find
+ .found:
+    pop di dx cx 
+    ret
 
 start:
 
