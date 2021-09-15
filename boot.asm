@@ -114,7 +114,7 @@ find_file:
     mov cx, 0xFFFF ; we don’t know string length, consider max (0xFFFF) length
     xor al, al ; 0 is the end of string sign
     repne scasb
-    neg cx ; get lenght of the string, some binary math magic
+    neg cx ; get length of the string, some binary math magic
     dec cx
     pop di
     push si ; compare file names
@@ -127,6 +127,49 @@ find_file:
  .found:
     pop di dx cx 
     ret
+
+; load current file to memory to BX:0 address. 
+; we load number of loaded sectors to AX
+load_file_data:
+	push bx cx dx si di
+	mov ax, word[f_data] ; load to DX:AX index of the first file sectors list
+	mov dx, word[f_data + 2]
+ .load_list:
+	cmp ax, -1 ; is it the end of the list?
+	jne @f
+	cmp dx, -1
+	jne @f
+ .file_end: ; file loading is done
+	pop di si dx cx ; restore all registers except BX
+	mov ax, bx ; remember BX
+	pop bx ; restore previous BX value
+	sub ax, bx ; find difference it will be the file size in 16 byte blocks
+	shr ax, 9 - 4 ; translate blocks to sectors
+	ret
+ @@:
+	mov di, f_info ; we will load the list to temp buffer
+	call load_sector
+	mov si, di ; SI := DI
+	mov cx, 512 / 8 - 1 ; number of sectors in the list
+ .load_sector:
+	lodsw ; load next sector
+	mov dx, [si]
+	add si, 2
+	cmp ax, -1 ; is it the end of the list?
+	jne @f
+	cmp dx, -1
+	je .file_end ; if it’s the end then we return
+ @@:
+	push es
+	mov es, bx ; load next sector
+   xor di, di
+	call load_sector
+	add bx, 0x200 / 16 ; load the next sector further 512 bytes
+	pop es
+	loop .load_sector ; this command decrement CX and if CX is greater than 0 then go to  .load_sector
+	lodsw ; load next list index to DX:AX
+	mov dx, [si]
+	jmp .load_list
 
 start:
 
