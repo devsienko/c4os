@@ -3,7 +3,7 @@ mkdir bin\disk
 
 del bin\* /Q
 
-fasm boot.asm bin\boot.bios.bin
+fasm src\boot.asm bin\boot.bios.bin
 
 tools\dd if=bin\boot.bios.bin of=bin\boot_sector.bin bs=512 count=1
 tools\dd if=bin\boot.bios.bin of=bin\disk\boot.bin bs=1 skip=512
