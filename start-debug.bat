@@ -1,2 +1,3 @@
 call .\build.bat
-bochsdbg.exe -f debug-bochs.bxrc -q
+
+bochsdbg.exe -f vm\debug-bochs.bxrc -q
