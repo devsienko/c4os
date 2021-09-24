@@ -52,13 +52,6 @@ write_str:
 	pop si ax
 	ret
 
-reboot:
-	mov si, reboot_msg
-	call write_str
-	xor ah, ah
-	int 0x16
-	jmp 0xFFFF:0
-
 get_disk_parameters:
 	mov [disk_id], dl ; get bootable disk id
 	mov ah, 0x08
@@ -192,8 +185,6 @@ load_stage2:
 	; go to stage 2 of the bootloader
 	jmp stage2
 start:
- 
-    cli ; Clear all Interrupts
 
 	mov si, boot_msg
 	call write_str
@@ -211,6 +202,7 @@ dw 0xAA55						; Boot Signiture
 load_msg_preffix db "Loading '",0
 load_msg_suffix db "'...",0
 ok_msg db "OK",13,10,0
+start32_msg db "Starting 32 bit kernel...",13,10,0
 ; split string from DS:SI by '/'
 split_file_name:
 	push si
@@ -218,6 +210,8 @@ split_file_name:
 	lodsb
 	cmp al, "/"
 	je @f
+	test al, al
+	jz @f
 	jmp @b
  @@:
 	mov byte[si - 1], 0
@@ -257,4 +251,64 @@ load_file:
 	pop bp si
 	ret
 stage2:
-	call reboot
+	jmp .prepare_start32
+	
+.prepare_start32:
+	mov si, start32_msg
+	call write_str
+ 
+	lgdt [gdtr_data]
+	cli ; clear all Interrupts
+	
+	; go to protected mode: 
+	mov eax, cr0 
+	or eax, 1
+	mov cr0, eax
+
+	; go to 32-bit code
+	jmp 8:start32
+
+align 16
+
+dt_data: 
+	dd 0 				; null descriptor
+	dd 0 
+
+; Offset 0x8 bytes from start of GDT: Descriptor code therfore is 8
+ 
+; gdt code:				; code descriptor
+	dw 0FFFFh 			; limit low
+	dw 0 				; base low
+	db 0 				; base middle
+	db 10011010b 		; access
+	db 11001111b 		; granularity
+	db 0 				; base high
+ 
+; Offset 16 bytes (0x10) from start of GDT. Descriptor code therfore is 0x10.
+ 
+; gdt data:				; data descriptor
+	dw 0FFFFh 			; limit low (Same as code)
+	dw 0 				; base low
+	db 0 				; base middle
+	db 10010010b 		; access
+	db 11001111b 		; granularity
+	db 0				; base high
+
+gdtr_data:
+	dw $ - dt_data - 1
+	dd dt_data
+
+use32
+start32:
+	; prepare segment registers
+	mov eax, 16
+	mov ds, ax
+	mov es, ax
+	mov fs, ax
+	mov gs, ax
+	mov ss, ax
+	movzx esp, sp
+	; show '!' to display (in the right bottom cornet)
+	mov byte[0xB8000 + (25 * 80 - 1) * 2], "!"
+	
+	hlt
