@@ -37,6 +37,7 @@ label disk_id byte at $$ + 3
 boot_msg db "Hi there! My OS boot loader have started to work!",13,10,0
 reboot_msg db "Press any key...",13,10,0
 boot_file_name db "boot.bin",0
+kernel_name db "kernel.bin",0
 
 ; write a string DS:SI to the monitor
 write_str:
@@ -253,6 +254,11 @@ load_file:
 	pop bp si
 	ret
 stage2:
+	; load kernel
+	mov si, kernel_name
+	mov bx, 0x9000 / 16
+	call load_file
+
 	jmp .prepare_start32
 	
 .prepare_page_tables:
@@ -276,7 +282,7 @@ stage2:
 	
 	; fill the last page table
 	mov di, 0x3000
-	mov eax, dword[0x6000]
+	mov eax, 0x9000
 	or eax, 11b
 	mov ecx, 1024 ; map whole table
   @@:
@@ -363,6 +369,8 @@ start32:
 	mov byte[0xB8000 + (25 * 80 - 1) * 2], "K"
 	mov dword[0x3FFC], 0xB8000 + 11b ; map last page of last PTE to the video memory
 	mov byte[0xFFFFF000 + (25 * 80 - 2) * 2], "O" ; display 'O' by above mapped memory
+
+	jmp 0xFFC00000 ; jump to kernel
 
 	hlt
 
