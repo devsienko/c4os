@@ -7,10 +7,11 @@ section ".text" executable
 
 _start:
 	movzx edx, dl
-	push edx
-	push esi
 	push ebx
+	push esi
+	push edx
 	call _kernel_main
+	add esp, 3 * 4
  @@:
 	jmp @b
 
