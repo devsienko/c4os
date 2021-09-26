@@ -255,9 +255,47 @@ load_file:
 stage2:
 	jmp .prepare_start32
 	
+.prepare_page_tables:
+	; clear page tables
+	xor ax, ax
+	mov cx, 3 * 4096 / 2; count of words (stosw), / 2 because one word is 2 bytes
+	mov di, 0x1000 ; address (stosw)
+	rep stosw
+	; fill the page directory that starts at 4096 (0x1000)
+	mov word[0x1000], 0x2000 + 111b ; points to first page table
+	mov word[0x1FFC], 0x3000 + 111b	; last page table record, 8188 (0x1FFC) = 4096 (page directory base) + 4096 (page directory size) - 4 (size of one page directory record)
+	
+	; fill the first page table
+	mov eax, 11b
+	mov cx, 0x100000 / 4096 ; map first 1 Mb
+	mov di, 0x2000 ; address (stosd)
+ @@:
+ 	stosd
+	add eax, 0x1000
+	loop @b
+	
+	; fill the last page table
+	mov di, 0x3000
+	mov eax, dword[0x6000]
+	or eax, 11b
+	mov ecx, 1024 ; map whole table
+  @@:
+	stosd
+	add eax, 0x1000
+	loop @b
+	mov word[0x3FF4], 0x4000 + 11b ; Kernel stack
+	mov word[0x3FF8], 0x3000 + 11b ; Kernel page table
+
+	; load page directory to CR3
+	mov eax, 0x1000
+ 	mov cr3, eax
+	ret
+
 .prepare_start32:
 	mov si, start32_msg
 	call write_str
+
+	call .prepare_page_tables
  
 	lgdt [gdtr_data]
 	cli ; clear all Interrupts
@@ -265,9 +303,9 @@ stage2:
 	; enable A20	
 	call EnableA20_KKbrd_Out
 	
-	; go to protected mode: 
+	; go to protected mode and turn on address translation (bit 31): 
 	mov eax, cr0 
-	or eax, 1
+	or eax, 0x80000001
 	mov cr0, eax
 
 	; go to 32-bit code
@@ -320,6 +358,11 @@ start32:
 	call ClsScr
 	mov	ebx, msg
 	call Puts
+
+	; put 'OK' to right bottom corner
+	mov byte[0xB8000 + (25 * 80 - 1) * 2], "K"
+	mov dword[0x3FFC], 0xB8000 + 11b ; map last page of last PTE to the video memory
+	mov byte[0xFFFFF000 + (25 * 80 - 2) * 2], "O" ; display 'O' by above mapped memory
 
 	hlt
 
