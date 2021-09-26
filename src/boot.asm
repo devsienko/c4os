@@ -150,7 +150,7 @@ load_file_data:
 	shr ax, 9 - 4 ; translate blocks to sectors
 	ret
  @@:
-	mov di, f_info ; we will load the list to temp buffer
+	mov di, 0x8000 / 16 ; we will load the list to temp buffer
 	call load_sector
 	mov si, di ; SI := DI
 	mov cx, 512 / 8 - 1 ; number of sectors in the list
@@ -197,6 +197,8 @@ start:
 times 510 - ($-$$) db 0			; We have to be 512 bytes. Clear the rest of the bytes with 0
  
 dw 0xAA55						; Boot Signiture
+
+include 'A20.inc'
 
 ; additional bootloader data
 load_msg_preffix db "Loading '",0
@@ -259,6 +261,9 @@ stage2:
  
 	lgdt [gdtr_data]
 	cli ; clear all Interrupts
+
+	; enable A20	
+	call EnableA20_KKbrd_Out
 	
 	; go to protected mode: 
 	mov eax, cr0 

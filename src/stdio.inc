@@ -1,3 +1,5 @@
+use32
+
 define		VIDMEM	0xB8000			; video memory
 define		COLS	80				; width and height of screen
 define		LINES	25
