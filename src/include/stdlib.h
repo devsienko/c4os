@@ -33,9 +33,9 @@ typedef signed long long int64;
 #define outportw(port, value) asm("outw %w0, %w1"::"a"(value),"d"(port));
 #define outportl(port, value) asm("outl %0, %w1"::"a"(value),"d"(port));
 
-#define inportb(port, out_value) asm("inb %w1, %b0":"=a"(value):"d"(port));
-#define inportw(port, out_value) asm("inw %w1, %w0":"=a"(value):"d"(port));
-#define inportl(port, out_value) asm("inl %w1, %0":"=a"(value):"d"(port));
+#define inportb(port, out_value) asm("inb %w1, %b0":"=a"(out_value):"d"(port));
+#define inportw(port, out_value) asm("inw %w1, %w0":"=a"(out_value):"d"(port));
+#define inportl(port, out_value) asm("inl %w1, %0":"=a"(out_value):"d"(port));
 
 void memset(void *mem, char value, size_t count);
 void memset_word(void *mem, uint16 value, size_t count);
