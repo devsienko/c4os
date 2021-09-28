@@ -27,6 +27,12 @@ void init_memory_manager(void *memory_map) {
 			memory_size += entry->length;
 		}
 	}
+	
+	map_pages(kernel_page_dir, KERNEL_CODE_BASE, get_page_info(kernel_page_dir, KERNEL_CODE_BASE),
+		((size_t)KERNEL_DATA_BASE - (size_t)KERNEL_CODE_BASE) >> PAGE_OFFSET_BITS, PAGE_PRESENT | PAGE_GLOBAL);
+	map_pages(kernel_page_dir, KERNEL_DATA_BASE, get_page_info(kernel_page_dir, KERNEL_DATA_BASE),
+		((size_t)KERNEL_END - (size_t)KERNEL_DATA_BASE) >> PAGE_OFFSET_BITS, PAGE_PRESENT | PAGE_WRITABLE | PAGE_GLOBAL);
+	map_pages(kernel_page_dir, KERNEL_PAGE_TABLE, get_page_info(kernel_page_dir, KERNEL_PAGE_TABLE), 1, PAGE_PRESENT | PAGE_WRITABLE | PAGE_GLOBAL);
 }
 
 static inline void flush_page_cache(void *addr) {
@@ -34,7 +40,7 @@ static inline void flush_page_cache(void *addr) {
 } 
 
 void temp_map_page(phyaddr addr) {
-	*((phyaddr*)TEMP_PAGE_INFO) = (addr & ~PAGE_OFFSET_MASK) | PAGE_VALID | PAGE_WRITABLE;
+	*((phyaddr*)TEMP_PAGE_INFO) = (addr & ~PAGE_OFFSET_MASK) | PAGE_PRESENT | PAGE_WRITABLE;
 	flush_page_cache((void*)TEMP_PAGE);
 }
 
@@ -47,13 +53,13 @@ bool map_pages(phyaddr page_dir, void *vaddr, phyaddr paddr, size_t count, unsig
 			temp_map_page(page_table);
 			if (shift > PAGE_OFFSET_BITS) {
 				page_table = ((phyaddr*)TEMP_PAGE)[index];
-				if (!(page_table & PAGE_VALID)) {
+				if (!(page_table & PAGE_PRESENT)) {
 					phyaddr addr = alloc_phys_pages(1);
 					if (addr != -1) {
 						temp_map_page(paddr);
 						memset((void*)TEMP_PAGE, 0, PAGE_SIZE);
 						temp_map_page(page_table);
-						((phyaddr*)TEMP_PAGE)[index] = addr | PAGE_VALID | PAGE_WRITABLE | PAGE_USER;
+						((phyaddr*)TEMP_PAGE)[index] = addr | PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER;
 						page_table = addr;
 					} else {
 						return false;
@@ -61,7 +67,7 @@ bool map_pages(phyaddr page_dir, void *vaddr, phyaddr paddr, size_t count, unsig
 				}
 			} else {
 				((phyaddr*)TEMP_PAGE)[index] = (paddr & ~PAGE_OFFSET_BITS) | flags;
-				asm("invlpg (,%0,)"::"a"(vaddr));
+				flush_page_cache(vaddr);
 			}
 		}
 		vaddr += PAGE_SIZE;
@@ -86,7 +92,7 @@ phyaddr get_page_info(phyaddr page_dir, void *vaddr) {
 	unsigned int page_directory_index = get_page_directory_index(vaddr);
 	temp_map_page(page_dir);
 	phyaddr pde = ((phyaddr*)TEMP_PAGE)[page_directory_index];
-	if (!(pde & PAGE_VALID)) {
+	if (!(pde & PAGE_PRESENT)) {
 		return 0;
 	}
 
@@ -129,7 +135,7 @@ phyaddr alloc_phys_pages(size_t count) {
 				break;
 			}
 			cur_block = ((PhysMemoryBlock*)TEMP_PAGE)->next;
-
+			
 		} while (cur_block != free_phys_memory_pointer);
 		if (result != -1) {
 			free_page_count -= count;
@@ -175,7 +181,8 @@ void free_phys_pages(phyaddr base, size_t count) {
 				((PhysMemoryBlock*)TEMP_PAGE)->next = next;
 				((PhysMemoryBlock*)TEMP_PAGE)->prev = prev;
 				((PhysMemoryBlock*)TEMP_PAGE)->size = count + old_count;
-				break;} else if ((cur_block > base) || (((PhysMemoryBlock*)TEMP_PAGE)->next == free_phys_memory_pointer)) {
+				break;
+			} else if ((cur_block > base) || (((PhysMemoryBlock*)TEMP_PAGE)->next == free_phys_memory_pointer)) {
 				phyaddr prev = ((PhysMemoryBlock*)TEMP_PAGE)->next;
 				((PhysMemoryBlock*)TEMP_PAGE)->prev = base;
 				temp_map_page(prev);
@@ -191,7 +198,7 @@ void free_phys_pages(phyaddr base, size_t count) {
 		if (base < free_phys_memory_pointer) {
 			free_phys_memory_pointer = base;
 		}
-
+		
 	}
 	free_page_count += count;
 }

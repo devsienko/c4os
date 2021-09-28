@@ -11,19 +11,56 @@
 
 #define PHYADDR_BITS 32
 
-#define PAGE_VALID 1
-#define PAGE_WRITABLE 2
-#define PAGE_USER 4
+#define PAGE_PRESENT		(1 << 0)
+#define PAGE_WRITABLE		(1 << 1)
+#define PAGE_USER		    (1 << 2)
+#define PAGE_WRITE_THROUGH	(1 << 3)
+#define PAGE_CACHE_DISABLED	(1 << 4)
+#define PAGE_ACCESSED		(1 << 5)
 
-typedef size_t phyaddr;
+#define PAGE_MODIFIED		(1 << 6)
+#define PAGE_GLOBAL		    (1 << 8)
 
-#define KERNEL_BASE 0xFFC00000
+void KERNEL_BASE();
+void KERNEL_CODE_BASE();
+void KERNEL_DATA_BASE();
+void KERNEL_BSS_BASE();
+void KERNEL_END();
+
 #define KERNEL_PAGE_TABLE 0xFFFFE000
 #define TEMP_PAGE 0xFFFFF000
 #define TEMP_PAGE_INFO (KERNEL_PAGE_TABLE + ((TEMP_PAGE >> PAGE_OFFSET_BITS) & PAGE_TABLE_INDEX_MASK) * sizeof(phyaddr))
 
+#define USER_MEMORY_START ((void*)0)
+#define USER_MEMORY_END ((void*)0x7FFFFFFF)
+#define KERNEL_MEMORY_START ((void*)0x80000000)
+#define KERNEL_MEMORY_END ((void*)(KERNEL_BASE - 1))
+
+typedef size_t phyaddr;
+
+typedef enum {
+	VMB_RESERVED,
+	VMB_MEMORY,
+	VMB_IO_MEMORY
+} VirtMemoryBlockType;
+
+typedef struct {
+	VirtMemoryBlockType type;
+	void *base;
+	size_t length;
+} VirtMemoryBlock;
+
+typedef struct {
+	phyaddr page_dir;
+	void *start;
+	void *end;
+	size_t block_count;
+	VirtMemoryBlock *blocks;
+} AddressSpace;
+
 phyaddr kernel_page_dir;
 size_t memory_size;
+AddressSpace kernel_address_space;
 
 void init_memory_manager(void *memory_map);
 
@@ -34,5 +71,8 @@ phyaddr get_page_info(phyaddr page_dir, void *vaddr);
 size_t get_free_memory_size();
 phyaddr alloc_phys_pages(size_t count);
 void free_phys_pages(phyaddr base, size_t count);
+
+void *alloc_virt_pages(AddressSpace *address_space, void *vaddr, phyaddr paddr, size_t count, unsigned int flags);
+void free_virt_pages(AddressSpace *address_space, void *vaddr, size_t count, unsigned int flags);
 
 #endif
