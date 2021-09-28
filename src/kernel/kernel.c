@@ -20,4 +20,11 @@ void kernel_main(uint8 boot_disk_id, void *memory_map, BootModuleInfo *boot_modu
 	printf("Boot module list --- 0x%x\n\n", boot_module_list);
 
 	printf("String is %s, char is %c, number is %d, hex number is 0x%x\n\n", __DATE__, 'A', 1234, 0x1234);
+
+	while (true) {
+		char buffer[256];
+		out_string("Command>");
+		in_string(buffer, sizeof(buffer));
+		printf("You typed: %s\n", buffer);
+	}
 }
