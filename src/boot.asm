@@ -298,8 +298,8 @@ stage2:
 	mov di, 0x1000 ; address (stosw)
 	rep stosw
 	; fill the page directory that starts at 4096 (0x1000)
-	mov word[0x1000], 0x2000 + 111b ; points to first page table
-	mov word[0x1FFC], 0x3000 + 111b	; last page table record, 8188 (0x1FFC) = 4096 (page directory base) + 4096 (page directory size) - 4 (size of one page directory record)
+	mov dword[0x1000], 0x2000 + 111b ; points to first page table
+	mov dword[0x1FFC], 0x3000 + 111b	; last page table record, 8188 (0x1FFC) = 4096 (page directory base) + 4096 (page directory size) - 4 (size of one page directory record)
 	
 	; fill the first page table
 	mov eax, 11b
@@ -319,8 +319,8 @@ stage2:
 	stosd
 	add eax, 0x1000
 	loop @b
-	mov word[0x3FF4], 0x4000 + 11b ; Kernel stack
-	mov word[0x3FF8], 0x3000 + 11b ; Kernel page table
+	mov dword[0x3FF4], 0x4000 + 11b ; Kernel stack
+	mov dword[0x3FF8], 0x3000 + 11b ; Kernel page table
 
 	; load page directory to CR3
 	mov eax, 0x1000

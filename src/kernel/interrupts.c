@@ -1,4 +1,5 @@
 #include "stdlib.h"
+#include "memory_manager.h"
 #include "interrupts.h"
 
 typedef struct {
@@ -19,7 +20,7 @@ IntDesc *idt = (void*)0xFFFFC000;
 void timer_int_handler();
 
 void init_interrupts() {
-	*((size_t*)0xFFFFEFF0) = 0x8000 | 3;
+	map_pages(kernel_page_dir, idt, 0x8000, 1, PAGE_VALID | PAGE_WRITABLE);
 	memset(idt, 0, 256 * sizeof(IntDesc));
 	IDTR idtr = {256 * sizeof(IntDesc), idt};
 	asm("lidt (,%0,)"::"a"(&idtr));
