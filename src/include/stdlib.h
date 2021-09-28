@@ -49,4 +49,11 @@ void strncpy(char *dest, char*src, size_t max_count);
 int strcmp(char *str1, char *str2);
 char *strchr(char *str, char value);
 
+struct memory_map_entry{
+        unsigned long long base;
+        unsigned long long length;
+        unsigned long type;
+        unsigned long acpi_attrs;
+}; 
+
 #endif 

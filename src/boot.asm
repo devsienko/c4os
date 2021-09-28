@@ -206,6 +206,9 @@ load_msg_preffix db "Loading '",0
 load_msg_suffix db "'...",0
 ok_msg db "OK",13,10,0
 start32_msg db "Starting 32 bit kernel...",13,10,0
+not_supported_error db "We cannot a detect disk size",13,10,0
+label memory_map at 0x9000
+
 ; split string from DS:SI by '/'
 split_file_name:
 	push si
@@ -253,10 +256,37 @@ load_file:
 	call write_str
 	pop bp si
 	ret
+
+get_memory_map:
+	mov di, memory_map
+	xor ebx, ebx
+ @@:
+	mov eax, 0xE820
+	mov edx, 0x534D4150
+	mov ecx, 24
+	mov dword[di + 20], 1
+	int 0x15
+	jc .not_supported ; jump if carry (cf=1), it means 0x15 0xE820 function isn't supported
+	add di, 24
+	test ebx, ebx
+	jnz @b
+ @@:
+	cmp di, 0x9000
+	ja .ok
+ .not_supported:
+	mov si, not_supported_error
+	call write_str
+	hlt
+ .ok:
+	xor ax, ax
+	mov cx, 24 / 2
+	rep stosw
+	ret
+
 stage2:
 	; load kernel
 	mov si, kernel_name
-	mov bx, 0x9000 / 16
+	mov bx, 0x11000 / 16
 	call load_file
 
 	jmp .prepare_start32
@@ -282,7 +312,7 @@ stage2:
 	
 	; fill the last page table
 	mov di, 0x3000
-	mov eax, 0x9000
+	mov eax, 0x11000
 	or eax, 11b
 	mov ecx, 1024 ; map whole table
   @@:
@@ -301,6 +331,7 @@ stage2:
 	mov si, start32_msg
 	call write_str
 
+	call get_memory_map
 	call .prepare_page_tables
  
 	lgdt [gdtr_data]
@@ -369,6 +400,11 @@ start32:
 	mov byte[0xB8000 + (25 * 80 - 1) * 2], "K"
 	mov dword[0x3FFC], 0xB8000 + 11b ; map last page of last PTE to the video memory
 	mov byte[0xFFFFF000 + (25 * 80 - 2) * 2], "O" ; display 'O' by above mapped memory
+
+	; put the memory map address to ESI
+	mov esi, memory_map
+	; put the boot disk number to DL
+	mov dl, [disk_id]
 
 	jmp 0xFFC00000 ; jump to kernel
 
