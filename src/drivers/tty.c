@@ -88,33 +88,54 @@ char *int_to_str(size_t value, unsigned char base) {
 	return &num_buffer[i + 1];
 }
 
+char *uint32_to_str(uint32 value, unsigned char base) {
+	size_t i = sizeof(num_buffer) - 1;
+	num_buffer[i--] = '\0';
+	do {
+		num_buffer[i--] = digits[value % base];
+		value = value / base;
+	} while (value);
+	return &num_buffer[i + 1];
+}
+
 void printf(char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	while (*fmt) {
 		if (*fmt == '%') {
 			fmt++;
-			size_t arg = va_arg(args, size_t);
+			size_t arg;
+			uint32 uint32_arg;
 			switch (*fmt) {
 				case '%':
 					out_char('%');
 					break;
 				case 'c':
+					arg = va_arg(args, size_t);
 					out_char(arg);
 					break;
 				case 's':
+					arg = va_arg(args, size_t);
 					out_string((char*)arg);
 					break;
 				case 'b':
+					arg = va_arg(args, size_t);
 					out_string(int_to_str(arg, 2));
 					break;
 				case 'o':
+					arg = va_arg(args, size_t);
 					out_string(int_to_str(arg, 8));
 					break;
 				case 'd':
+					arg = va_arg(args, size_t);
 					out_string(int_to_str(arg, 10));
 					break;
+				case 'u': //for unsigned long
+					uint32_arg = va_arg(args, uint32);
+					out_string(uint32_to_str(uint32_arg, 10));
+					break;
 				case 'x':
+					arg = va_arg(args, size_t);
 					out_string(int_to_str(arg, 16));
 					break;
 			}
