@@ -20,7 +20,7 @@ IntDesc *idt = (void*)0xFFFFC000;
 void timer_int_handler();
 
 void init_interrupts() {
-	map_pages(kernel_page_dir, idt, 0x8000, 1, PAGE_VALID | PAGE_WRITABLE);
+	map_pages(kernel_page_dir, idt, alloc_phys_pages(1), 1, PAGE_VALID | PAGE_WRITABLE);
 	memset(idt, 0, 256 * sizeof(IntDesc));
 	IDTR idtr = {256 * sizeof(IntDesc), idt};
 	asm("lidt (,%0,)"::"a"(&idtr));

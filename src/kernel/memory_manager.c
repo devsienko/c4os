@@ -8,8 +8,14 @@ typedef struct {
 	uint32 acpi_ext_attrs;
 } __attribute__((packed)) MemoryMapEntry;
 
+typedef struct {
+	phyaddr next;
+	phyaddr prev;
+	size_t size;
+} PhysMemoryBlock;
+
 size_t free_page_count = 0;
-phyaddr free_phys_memory_pointer = 0;
+phyaddr free_phys_memory_pointer = -1;
 
 void init_memory_manager(void *memory_map) {
 	asm("movl %%cr3, %0":"=a"(kernel_page_dir));
@@ -43,7 +49,7 @@ bool map_pages(phyaddr page_dir, void *vaddr, phyaddr paddr, size_t count, unsig
 				page_table = ((phyaddr*)TEMP_PAGE)[index];
 				if (!(page_table & PAGE_VALID)) {
 					phyaddr addr = alloc_phys_pages(1);
-					if (addr) {
+					if (addr != -1) {
 						temp_map_page(paddr);
 						memset((void*)TEMP_PAGE, 0, PAGE_SIZE);
 						temp_map_page(page_table);
@@ -96,9 +102,96 @@ size_t get_free_memory_size() {
 }
 
 phyaddr alloc_phys_pages(size_t count) {
-	return 0;
-}
+	if (free_page_count < count) return -1;
+	phyaddr result = -1;
+	if (free_phys_memory_pointer != -1) {
+		phyaddr cur_block = free_phys_memory_pointer;
+		do {
+			temp_map_page(cur_block);
+			if (((PhysMemoryBlock*)TEMP_PAGE)->size == count) {
+				phyaddr next = ((PhysMemoryBlock*)TEMP_PAGE)->next;
+				phyaddr prev = ((PhysMemoryBlock*)TEMP_PAGE)->prev;
+				temp_map_page(next);
+				((PhysMemoryBlock*)TEMP_PAGE)->prev = prev;
+				temp_map_page(prev);
+				((PhysMemoryBlock*)TEMP_PAGE)->next = next;
+				if (cur_block == free_phys_memory_pointer) {
+					free_phys_memory_pointer = next;
+					if (cur_block == free_phys_memory_pointer) {
+						free_phys_memory_pointer = -1;
+					}
+				}
+				result = cur_block;
+				break;
+			} else if (((PhysMemoryBlock*)TEMP_PAGE)->size > count) {
+				((PhysMemoryBlock*)TEMP_PAGE)->size -= count;
+				result = cur_block + (((PhysMemoryBlock*)TEMP_PAGE)->size << PAGE_OFFSET_BITS);
+				break;
+			}
+			cur_block = ((PhysMemoryBlock*)TEMP_PAGE)->next;
+
+		} while (cur_block != free_phys_memory_pointer);
+		if (result != -1) {
+			free_page_count -= count;
+		} 
+	}
+	return result;
+} 
 
 void free_phys_pages(phyaddr base, size_t count) {
-	
+	if (free_phys_memory_pointer == -1) {
+		temp_map_page(base);
+		((PhysMemoryBlock*)TEMP_PAGE)->next = base;
+		((PhysMemoryBlock*)TEMP_PAGE)->prev = base;
+		((PhysMemoryBlock*)TEMP_PAGE)->size = count;
+		free_phys_memory_pointer = base;
+	} else {
+		phyaddr cur_block = free_phys_memory_pointer;
+		do {
+			temp_map_page(cur_block);
+			if (cur_block + (((PhysMemoryBlock*)TEMP_PAGE)->size << PAGE_OFFSET_BITS) == base) {
+				((PhysMemoryBlock*)TEMP_PAGE)->size += count;
+				if (((PhysMemoryBlock*)TEMP_PAGE)->next == base + (count << PAGE_OFFSET_BITS)) {
+					phyaddr next1 = ((PhysMemoryBlock*)TEMP_PAGE)->next;
+					temp_map_page(next1);
+					phyaddr next2 = ((PhysMemoryBlock*)TEMP_PAGE)->next;
+					size_t new_count = ((PhysMemoryBlock*)TEMP_PAGE)->size;
+					temp_map_page(next2);
+					((PhysMemoryBlock*)TEMP_PAGE)->prev = cur_block;
+					temp_map_page(cur_block);
+					((PhysMemoryBlock*)TEMP_PAGE)->next = next2;
+					((PhysMemoryBlock*)TEMP_PAGE)->size += new_count;
+				}
+				break;
+			} else if (base + (count << PAGE_OFFSET_BITS) == cur_block) {
+				size_t old_count = ((PhysMemoryBlock*)TEMP_PAGE)->size;
+				phyaddr next = ((PhysMemoryBlock*)TEMP_PAGE)->next;
+				phyaddr prev = ((PhysMemoryBlock*)TEMP_PAGE)->prev;
+				temp_map_page(next);
+				((PhysMemoryBlock*)TEMP_PAGE)->prev = base;
+				temp_map_page(prev);
+				((PhysMemoryBlock*)TEMP_PAGE)->next = base;
+				temp_map_page(base);
+				((PhysMemoryBlock*)TEMP_PAGE)->next = next;
+				((PhysMemoryBlock*)TEMP_PAGE)->prev = prev;
+				((PhysMemoryBlock*)TEMP_PAGE)->size = count + old_count;
+				break;} else if ((cur_block > base) || (((PhysMemoryBlock*)TEMP_PAGE)->next == free_phys_memory_pointer)) {
+				phyaddr prev = ((PhysMemoryBlock*)TEMP_PAGE)->next;
+				((PhysMemoryBlock*)TEMP_PAGE)->prev = base;
+				temp_map_page(prev);
+				((PhysMemoryBlock*)TEMP_PAGE)->next = base;
+				temp_map_page(base);
+				((PhysMemoryBlock*)TEMP_PAGE)->next = cur_block;
+				((PhysMemoryBlock*)TEMP_PAGE)->prev = prev;
+				((PhysMemoryBlock*)TEMP_PAGE)->size = count;
+				break;
+			}
+			cur_block = ((PhysMemoryBlock*)TEMP_PAGE)->next;
+		} while (cur_block != free_phys_memory_pointer);
+		if (base < free_phys_memory_pointer) {
+			free_phys_memory_pointer = base;
+		}
+
+	}
+	free_page_count += count;
 }
