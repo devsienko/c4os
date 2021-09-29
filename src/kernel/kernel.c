@@ -14,12 +14,19 @@ void kernel_main(uint8 boot_disk_id, void *memory_map) {
 
 	printf("Boot disk id ------- %d\n", boot_disk_id);
 	printf("Memory map --------- 0x%x\n\n", memory_map);
-	
+
 	display_memory_map(memory_map);
 
 	printf("kernel_page_dir = 0x%x\n", kernel_page_dir);
 	printf("memory_size = %d MB\n", memory_size / 1024 / 1024);
 	printf("get_page_info(kernel_page_dir, 0xB8000) = 0x%x\n\n", get_page_info(kernel_page_dir, (void*)0xB8000));
+
+	int i;
+	for (i = 0; i < kernel_address_space.block_count; i++) {
+		printf("type = %d, base = 0x%x, length = 0x%x\n", kernel_address_space.blocks[i].type, kernel_address_space.blocks[i].base,
+			kernel_address_space.blocks[i].length);
+	}
+	printf("\n");
 
 	while (true) {
 		char buffer[256];
@@ -38,21 +45,20 @@ void display_memory_map(void *memory_map) {
 		{"ACPI Reclaim"},		//memory_region.type==2
 		{"ACPI NVS Memory"}		//memory_region.type==3
 	};
-
+	
 	struct memory_map_entry *entry = memory_map;
 	int map_entry_size = 24; //in bytes
 	int region_number = 1;
 	while(true) {
 		if(is_last_memory_map_entry(entry))
 			break;
-
+		
 		printf("region %d: start - %u; length (bytes) - %u; type - %d (%s)\n", 
 			region_number, 
 			(unsigned long)entry->base,
 			(unsigned long)entry->length,
 			entry->type,
 			memory_types[entry->type-1]);
-
 		entry++;
 		region_number++;
 	}

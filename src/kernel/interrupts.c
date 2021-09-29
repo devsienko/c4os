@@ -15,12 +15,13 @@ typedef struct {
 	void *base;
 } __attribute__((packed)) IDTR;
 
-IntDesc *idt = (void*)0xFFFFC000;
+IntDesc *idt;
 
 void timer_int_handler();
 
 void init_interrupts() {
-	map_pages(kernel_page_dir, idt, alloc_phys_pages(1), 1, PAGE_PRESENT | PAGE_WRITABLE | PAGE_GLOBAL);	memset(idt, 0, 256 * sizeof(IntDesc));
+	idt = alloc_virt_pages(&kernel_address_space, NULL, -1, 1, PAGE_PRESENT | PAGE_WRITABLE | PAGE_GLOBAL);
+	memset(idt, 0, 256 * sizeof(IntDesc));
 	IDTR idtr = {256 * sizeof(IntDesc), idt};
 	asm("lidt (,%0,)"::"a"(&idtr));
 	irq_base = 0x20;

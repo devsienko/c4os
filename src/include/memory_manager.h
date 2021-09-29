@@ -27,9 +27,9 @@ void KERNEL_DATA_BASE();
 void KERNEL_BSS_BASE();
 void KERNEL_END();
 
-#define KERNEL_PAGE_TABLE 0xFFFFE000
-#define TEMP_PAGE 0xFFFFF000
-#define TEMP_PAGE_INFO (KERNEL_PAGE_TABLE + ((TEMP_PAGE >> PAGE_OFFSET_BITS) & PAGE_TABLE_INDEX_MASK) * sizeof(phyaddr))
+#define KERNEL_PAGE_TABLE ((void*)0xFFFFE000)
+#define TEMP_PAGE ((void*)0xFFFFF000)
+#define TEMP_PAGE_INFO ((size_t)KERNEL_PAGE_TABLE + (((size_t)TEMP_PAGE >> PAGE_OFFSET_BITS) & PAGE_TABLE_INDEX_MASK) * sizeof(phyaddr))
 
 #define USER_MEMORY_START ((void*)0)
 #define USER_MEMORY_END ((void*)0x7FFFFFFF)
@@ -54,6 +54,7 @@ typedef struct {
 	phyaddr page_dir;
 	void *start;
 	void *end;
+	size_t block_table_size;
 	size_t block_count;
 	VirtMemoryBlock *blocks;
 } AddressSpace;
@@ -73,6 +74,6 @@ phyaddr alloc_phys_pages(size_t count);
 void free_phys_pages(phyaddr base, size_t count);
 
 void *alloc_virt_pages(AddressSpace *address_space, void *vaddr, phyaddr paddr, size_t count, unsigned int flags);
-void free_virt_pages(AddressSpace *address_space, void *vaddr, size_t count, unsigned int flags);
+bool free_virt_pages(AddressSpace *address_space, void *vaddr, unsigned int flags);
 
 #endif

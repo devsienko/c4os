@@ -33,6 +33,20 @@ void init_memory_manager(void *memory_map) {
 	map_pages(kernel_page_dir, KERNEL_DATA_BASE, get_page_info(kernel_page_dir, KERNEL_DATA_BASE),
 		((size_t)KERNEL_END - (size_t)KERNEL_DATA_BASE) >> PAGE_OFFSET_BITS, PAGE_PRESENT | PAGE_WRITABLE | PAGE_GLOBAL);
 	map_pages(kernel_page_dir, KERNEL_PAGE_TABLE, get_page_info(kernel_page_dir, KERNEL_PAGE_TABLE), 1, PAGE_PRESENT | PAGE_WRITABLE | PAGE_GLOBAL);
+
+	kernel_address_space.page_dir = kernel_page_dir;
+	kernel_address_space.start = KERNEL_MEMORY_START;
+	kernel_address_space.end = KERNEL_MEMORY_END;
+	
+	kernel_address_space.block_table_size = PAGE_SIZE / sizeof(VirtMemoryBlock);
+	kernel_address_space.blocks = KERNEL_MEMORY_START;
+	kernel_address_space.block_count = 1;
+	
+	map_pages(kernel_page_dir, kernel_address_space.blocks, alloc_phys_pages(1), 1, PAGE_PRESENT | PAGE_WRITABLE);
+	
+	kernel_address_space.blocks[0].type = VMB_RESERVED;
+	kernel_address_space.blocks[0].base = kernel_address_space.blocks;
+	kernel_address_space.blocks[0].length = PAGE_SIZE;
 }
 
 static inline void flush_page_cache(void *addr) {
@@ -52,13 +66,14 @@ bool map_pages(phyaddr page_dir, void *vaddr, phyaddr paddr, size_t count, unsig
 			unsigned int index = ((size_t)vaddr >> shift) & PAGE_TABLE_INDEX_MASK;
 			temp_map_page(page_table);
 			if (shift > PAGE_OFFSET_BITS) {
+				size_t prev_page_table = page_table;
 				page_table = ((phyaddr*)TEMP_PAGE)[index];
 				if (!(page_table & PAGE_PRESENT)) {
 					phyaddr addr = alloc_phys_pages(1);
 					if (addr != -1) {
-						temp_map_page(paddr);
+						temp_map_page(addr);
 						memset((void*)TEMP_PAGE, 0, PAGE_SIZE);
-						temp_map_page(page_table);
+						temp_map_page(prev_page_table);
 						((phyaddr*)TEMP_PAGE)[index] = addr | PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER;
 						page_table = addr;
 					} else {
@@ -201,4 +216,110 @@ void free_phys_pages(phyaddr base, size_t count) {
 		
 	}
 	free_page_count += count;
+}
+
+/* Highlevel virtual memory manager */
+
+static inline bool is_blocks_overlapped(void *base1, size_t size1, void *base2, size_t size2) {
+	return ((base1 >= base2) && (base1 < base2 + size2)) || ((base2 >= base1) && (base2 < base1 + size1));
+}
+
+void *alloc_virt_pages(AddressSpace *address_space, void *vaddr, phyaddr paddr, size_t count, unsigned int flags) {
+	VirtMemoryBlockType type = VMB_IO_MEMORY;
+	size_t i;
+	if (vaddr == NULL) {
+		vaddr = address_space->end - (count << PAGE_OFFSET_BITS) + 1;
+		for (i = 0; i < address_space->block_count; i++) {
+			if (is_blocks_overlapped(address_space->blocks[i].base, address_space->blocks[i].length, vaddr, count)) {
+				vaddr = address_space->blocks[i].base - (count << PAGE_OFFSET_BITS);
+			} else {
+				break;
+			}
+		}
+	} else {
+		if ((vaddr >= address_space->start) && (vaddr + (count << PAGE_OFFSET_BITS) < address_space->end)) {
+			for (i = 0; i < address_space->block_count; i++) {
+				if (is_blocks_overlapped(address_space->blocks[i].base, address_space->blocks[i].length, vaddr, count << PAGE_OFFSET_BITS)) {
+					vaddr = NULL;
+					break;
+				} else if (address_space->blocks[i].base < vaddr) {
+					break;
+				}
+			}
+		} else {
+			vaddr = NULL;
+		}
+	}
+	if (vaddr != NULL) {
+		if (paddr == -1) {
+			paddr = alloc_phys_pages(count);
+			type = VMB_MEMORY;
+		}
+		if (paddr != -1) {
+			if (map_pages(address_space->page_dir, vaddr, paddr, count, flags)) {
+				if (address_space->block_count == address_space->block_table_size) {
+					size_t new_size = address_space->block_table_size * sizeof(VirtMemoryBlock);
+					new_size = (new_size + PAGE_OFFSET_MASK) & ~PAGE_OFFSET_MASK;
+					new_size += PAGE_SIZE;
+					new_size = new_size >> PAGE_OFFSET_BITS;
+					if (&kernel_address_space != address_space) {
+						VirtMemoryBlock *new_table = alloc_virt_pages(&kernel_address_space, NULL, -1, new_size,	
+							PAGE_PRESENT | PAGE_WRITABLE);
+						if (new_table) {
+							memcpy(new_table, address_space->blocks, address_space->block_table_size * sizeof(VirtMemoryBlock));
+							free_virt_pages(&kernel_address_space, address_space->blocks, 0);
+							address_space->blocks = new_table;
+						} else {
+							goto fail;
+						}
+					} else {
+						phyaddr new_page = alloc_phys_pages(1);
+						if (new_page == -1) {
+							goto fail;
+						} else {
+							VirtMemoryBlock *main_block = &(address_space->blocks[address_space->block_count - 1]);
+							if (map_pages(address_space->page_dir, main_block->base + main_block->length, new_page, 1,
+									PAGE_PRESENT | PAGE_WRITABLE)) {
+								main_block->length += PAGE_SIZE;
+							} else {
+								free_phys_pages(new_page, 1);
+							}
+						}
+					}
+					address_space->block_table_size = (new_size << PAGE_OFFSET_BITS) / sizeof(VirtMemoryBlock);
+				}
+				memcpy(address_space->blocks + i + 1, address_space->blocks + i,
+					(address_space->block_count - i) * sizeof(VirtMemoryBlock));
+				address_space->block_count++;
+				address_space->blocks[i].type = type;
+				address_space->blocks[i].base = vaddr;
+				address_space->blocks[i].length = count << PAGE_OFFSET_BITS;
+			} else {
+fail:
+				map_pages(address_space->page_dir, vaddr, 0, count, 0);
+				free_phys_pages(paddr, count);
+				vaddr = NULL;
+			}
+		}
+	}
+	return vaddr;
+}
+
+bool free_virt_pages(AddressSpace *address_space, void *vaddr, unsigned int flags) {
+	size_t i;
+	for (i = 0; i < address_space->block_count; i++) {
+		if ((address_space->blocks[i].base <= vaddr) && (address_space->blocks[i].base + address_space->blocks[i].length > vaddr)) {
+			break;
+		}
+	}
+	if (i < address_space->block_count) {
+		if (address_space->blocks[i].type = VMB_MEMORY) {
+			free_phys_pages(get_page_info(address_space->page_dir, vaddr) & ~PAGE_OFFSET_MASK, address_space->blocks[i].length >> PAGE_OFFSET_BITS);
+		}
+		address_space->block_count--;
+		memcpy(address_space->blocks + i, address_space->blocks + i + 1, (address_space->block_count - i) * sizeof(VirtMemoryBlock));
+		return true;
+	} else {
+		return false;
+	}
 }

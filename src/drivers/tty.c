@@ -1,5 +1,6 @@
 #include <stdarg.h>
 #include "stdlib.h"
+#include "memory_manager.h"
 #include "tty.h"
 #include "interrupts.h"
 #include "scancodes.h"
@@ -24,7 +25,7 @@ unsigned int key_buffer_tail = 0;
 void keyboard_int_handler();
 
 void init_tty() {
-	tty_buffer = (void*)0xB8000;
+	tty_buffer = alloc_virt_pages(&kernel_address_space, NULL, 0xB8000, 1, PAGE_PRESENT | PAGE_WRITABLE);
 	tty_width = *((uint16*)0x44A);
 	tty_height = 25;
 	tty_io_port = *((uint16*)0x463);
@@ -159,7 +160,7 @@ IRQ_HANDLER(keyboard_int_handler) {
 	inportb(0x61, status);
 	status |= 1;
 	outportb(0x61, status);
-}
+} 
 
 uint8 in_scancode() {
 	uint8 result;
@@ -173,7 +174,7 @@ uint8 in_scancode() {
 		result = 0;
 	}
 	return result;
-}
+} 
 
 char in_char(bool wait) {
 	static bool shift = false;
@@ -200,7 +201,7 @@ char in_char(bool wait) {
 		}
 	} while (wait && (!chr));
 	return chr;
-}
+} 
 
 void in_string(char *buffer, size_t buffer_size) {
 	char chr;

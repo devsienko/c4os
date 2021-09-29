@@ -1,9 +1,9 @@
 ENTRY(_start)
 
-KERNEL_BASE = 0xFFC00000;
+_KERNEL_BASE = 0xFFC00000;
 
 SECTIONS {
- 	.text KERNEL_BASE : {
+ 	.text _KERNEL_BASE : {
 		_KERNEL_CODE_BASE = .;
 		*(.text)
 		*(.code)
