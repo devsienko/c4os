@@ -56,9 +56,29 @@ void strncpy(char *dest, char *src, size_t max_count) {
 }
 
 int strcmp(char *str1, char *str2) {
-	return memcmp(str1, str2, strlen(str1) + 1);
+  	char c1, c2;
+  	do {
+      	c1 = *str1++;
+      	c2 = *str2++;
+      	if (c1 == '\0')
+        	return c1 - c2;
+    }
+  	while (c1 == c2);
+  	return c1 - c2;
 }
 
 char *strchr(char *str, char value) {
 	return memchr(str, value, strlen(str));
-} 
+}
+
+bool mutex_get(Mutex *mutex, bool wait) {
+	bool old_value = true;
+	do {
+		asm("xchg (,%1,), %0":"=a"(old_value):"b"(mutex),"a"(old_value));
+	} while (old_value && wait);
+	return !old_value;
+}
+
+void mutex_release(Mutex *mutex) {
+	*mutex = false;
+}

@@ -16,6 +16,7 @@ typedef struct {
 
 size_t free_page_count = 0;
 phyaddr free_phys_memory_pointer = -1;
+Mutex phys_memory_mutex;
 
 void init_memory_manager(void *memory_map) {
 	asm("movl %%cr3, %0":"=a"(kernel_page_dir));
@@ -123,8 +124,11 @@ size_t get_free_memory_size() {
 }
 
 phyaddr alloc_phys_pages(size_t count) {
-	if (free_page_count < count) return -1;
+	if (free_page_count < count) 
+		return -1;
+
 	phyaddr result = -1;
+	mutex_get(&phys_memory_mutex, true);
 	if (free_phys_memory_pointer != -1) {
 		phyaddr cur_block = free_phys_memory_pointer;
 		do {
@@ -156,10 +160,13 @@ phyaddr alloc_phys_pages(size_t count) {
 			free_page_count -= count;
 		} 
 	}
+	mutex_release(&phys_memory_mutex);
 	return result;
 } 
 
 void free_phys_pages(phyaddr base, size_t count) {
+	mutex_get(&phys_memory_mutex, true);
+
 	if (free_phys_memory_pointer == -1) {
 		temp_map_page(base);
 		((PhysMemoryBlock*)TEMP_PAGE)->next = base;
@@ -216,6 +223,8 @@ void free_phys_pages(phyaddr base, size_t count) {
 		
 	}
 	free_page_count += count;
+
+	mutex_release(&phys_memory_mutex);
 }
 
 /* Highlevel virtual memory manager */
@@ -227,6 +236,9 @@ static inline bool is_blocks_overlapped(void *base1, size_t size1, void *base2, 
 void *alloc_virt_pages(AddressSpace *address_space, void *vaddr, phyaddr paddr, size_t count, unsigned int flags) {
 	VirtMemoryBlockType type = VMB_IO_MEMORY;
 	size_t i;
+	
+	mutex_get(&(address_space->mutex), true);
+
 	if (vaddr == NULL) {
 		vaddr = address_space->end - (count << PAGE_OFFSET_BITS) + 1;
 		for (i = 0; i < address_space->block_count; i++) {
@@ -302,11 +314,17 @@ fail:
 			}
 		}
 	}
+
+	mutex_release(&(address_space->mutex));
+
 	return vaddr;
 }
 
 bool free_virt_pages(AddressSpace *address_space, void *vaddr, unsigned int flags) {
 	size_t i;
+
+	mutex_get(&(address_space->mutex), true);
+
 	for (i = 0; i < address_space->block_count; i++) {
 		if ((address_space->blocks[i].base <= vaddr) && (address_space->blocks[i].base + address_space->blocks[i].length > vaddr)) {
 			break;
@@ -318,8 +336,14 @@ bool free_virt_pages(AddressSpace *address_space, void *vaddr, unsigned int flag
 		}
 		address_space->block_count--;
 		memcpy(address_space->blocks + i, address_space->blocks + i + 1, (address_space->block_count - i) * sizeof(VirtMemoryBlock));
+		
+		mutex_release(&(address_space->mutex));
+		
 		return true;
 	} else {
+		
+		mutex_release(&(address_space->mutex));
+
 		return false;
 	}
 }

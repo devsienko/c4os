@@ -26,6 +26,11 @@ typedef signed long long int64;
 	typedef uint32 size_t;
 #endif
 
+typedef bool Mutex;
+
+bool mutex_get(Mutex *mutex, bool wait);
+void mutex_release(Mutex *mutex);
+
 #define min(a, b) (((a) > (b)) ? (b) : (a))
 #define max(a, b) (((a) > (b)) ? (a) : (b))
 
@@ -50,10 +55,10 @@ int strcmp(char *str1, char *str2);
 char *strchr(char *str, char value);
 
 struct memory_map_entry{
-        unsigned long long base;
-        unsigned long long length;
-        unsigned long type;
-        unsigned long acpi_attrs;
+    unsigned long long base;
+    unsigned long long length;
+    unsigned long type;
+    unsigned long acpi_attrs;
 }; 
 
 #endif 

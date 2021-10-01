@@ -57,6 +57,7 @@ typedef struct {
 	size_t block_table_size;
 	size_t block_count;
 	VirtMemoryBlock *blocks;
+	Mutex mutex;
 } AddressSpace;
 
 phyaddr kernel_page_dir;
