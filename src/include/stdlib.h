@@ -28,6 +28,20 @@ typedef signed long long int64;
 
 typedef bool Mutex;
 
+typedef struct _ListItem ListItem;
+
+typedef struct {
+	ListItem *first;
+	size_t count;
+	Mutex mutex;
+} List;
+
+struct _ListItem {
+	ListItem *next;
+	ListItem *prev;
+	List *list;
+};
+
 bool mutex_get(Mutex *mutex, bool wait);
 void mutex_release(Mutex *mutex);
 
@@ -64,5 +78,9 @@ struct memory_map_entry{
     unsigned long type;
     unsigned long acpi_attrs;
 }; 
+
+void list_init(List *list);
+void list_append(List *list, ListItem *item);
+void list_remove(ListItem *item);
 
 #endif 

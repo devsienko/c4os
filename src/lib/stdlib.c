@@ -107,3 +107,42 @@ int isdigit(int c)
 {
   	return ((c >= '0') && (c <= '9'));
 }
+
+void list_init(List *list) {
+	list->first = NULL;
+	list->count = 0;
+	list->mutex = false;
+}
+
+void list_append(List *list, ListItem *item) {
+	if (item->list == NULL) {
+		mutex_get(&(list->mutex), true);
+		if (list->first) {
+			item->list = list;
+			item->next = list->first;
+			item->prev = list->first->prev;
+			item->prev->next = item;
+			item->next->prev = item;
+		} else {
+			item->next = item;
+			item->prev = item;
+			list->first = item;
+		}
+		list->count++;
+		mutex_release(&(list->mutex));
+	}
+}
+
+void list_remove(ListItem *item) {
+	mutex_get(&(item->list->mutex), true);
+	if (item->list->first == item) {
+		item->list->first = item->next;
+		if (item->list->first == item) {
+			item->list->first = NULL;
+		}
+	}
+	item->next->prev = item->prev;
+	item->prev->next = item->next;
+	item->list->count--;
+	mutex_release(&(item->list->mutex));
+}
