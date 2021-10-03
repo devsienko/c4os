@@ -1,7 +1,7 @@
+del bin\* /S /Q
+
 if not exist "bin\" mkdir bin
 mkdir bin\disk
-
-del bin\* /Q
 
 fasm src\boot.asm bin\boot.bios.bin
 

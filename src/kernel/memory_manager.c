@@ -123,6 +123,7 @@ size_t get_free_memory_size() {
 	return free_page_count << PAGE_OFFSET_BITS;
 }
 
+// count - count of pages
 phyaddr alloc_phys_pages(size_t count) {
 	if (free_page_count < count) 
 		return -1;

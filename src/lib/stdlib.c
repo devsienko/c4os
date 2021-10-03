@@ -82,3 +82,28 @@ bool mutex_get(Mutex *mutex, bool wait) {
 void mutex_release(Mutex *mutex) {
 	*mutex = false;
 }
+
+int atoi(const char *s)
+{
+	int n=0, neg=0;
+	while (isspace(*s)) s++;
+	switch (*s) {
+	case '-': neg=1;
+	case '+': s++;
+	}
+	/* Compute n as a negative number to avoid overflow on INT_MIN */
+	while (isdigit(*s))
+		n = 10*n - (*s++ - '0');
+	return neg ? n : -n;
+}
+
+int isspace(int c)
+{
+	return ((c == '\t') || (c == '\n') ||
+	    (c == '\v') || (c == '\f') || (c == '\r') || (c == ' '));
+}
+
+int isdigit(int c)
+{
+  	return ((c >= '0') && (c <= '9'));
+}

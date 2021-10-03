@@ -224,7 +224,7 @@ split_file_name:
 	mov ax, si
 	pop si
 	ret
-; load file with name DS:SI to the buffer DI:0. file size (in sectors) we return in  AX
+; load file with name DS:SI to the buffer DI:0. file size (in sectors) we return in AX
 load_file:
 	push si
 	mov si, load_msg_preffix
