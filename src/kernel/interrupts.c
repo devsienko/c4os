@@ -1,6 +1,7 @@
 #include "stdlib.h"
 #include "memory_manager.h"
 #include "interrupts.h"
+#include "multitasking.h"
 #include "tty.h"
 #include "timer.h"
 #include "floppy.h"
@@ -61,8 +62,7 @@ void irq_handler(uint32 index, Registers *regs) {
 	switch (index) {
 		case 0:
 			inc_pit_ticks();
-			// timer int hander:
-			(*((char*)(0xB8000 + 79 * 2)))++;
+			switch_task(regs);
 			break;
 		case 1:
 			keyboard_interrupt();

@@ -4,10 +4,12 @@
 #include "interrupts.h"
 #include "floppy.h"
 #include "timer.h"
+#include "multitasking.h"
 
 void kernel_main(uint8 boot_disk_id, void *memory_map) {
 	init_memory_manager(memory_map);
 	init_interrupts();
+	init_multitasking();
 	init_tty();
 	init_floppy();
 	set_text_attr(63);
@@ -39,6 +41,8 @@ void kernel_main(uint8 boot_disk_id, void *memory_map) {
 			cmd_read_sect();
 		else if(!strcmp("ticks", buffer))
 			cmd_get_ticks();
+		else if(!strcmp("ps", buffer))
+			show_process_list();
 		else 
 			printf("You typed: %s\n", buffer);
 	}
@@ -132,4 +136,13 @@ bool is_last_memory_map_entry(struct memory_map_entry *entry) {
 		&& entry->length == 0
 		&& entry->length == 0;
 	return result;
+}
+
+void show_process_list() {
+	ListItem* process_item = process_list.first;
+	for(int i = 0; i < process_list.count; i++) {
+		char* process_name = (*((Process*)process_item)).name;
+		printf("  process - %s\n", process_name);
+		process_item = process_item->next;
+	}
 }
