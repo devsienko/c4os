@@ -30,9 +30,9 @@ void init_memory_manager(void *memory_map) {
 	}
 	
 	map_pages(kernel_page_dir, KERNEL_CODE_BASE, get_page_info(kernel_page_dir, KERNEL_CODE_BASE),
-		((size_t)KERNEL_DATA_BASE - (size_t)KERNEL_CODE_BASE) >> PAGE_OFFSET_BITS, PAGE_PRESENT | PAGE_GLOBAL);
+		((size_t)KERNEL_DATA_BASE - (size_t)KERNEL_CODE_BASE) >> PAGE_OFFSET_BITS, PAGE_PRESENT | PAGE_GLOBAL | PAGE_USER);
 	map_pages(kernel_page_dir, KERNEL_DATA_BASE, get_page_info(kernel_page_dir, KERNEL_DATA_BASE),
-		((size_t)KERNEL_END - (size_t)KERNEL_DATA_BASE) >> PAGE_OFFSET_BITS, PAGE_PRESENT | PAGE_WRITABLE | PAGE_GLOBAL);
+		((size_t)KERNEL_END - (size_t)KERNEL_DATA_BASE) >> PAGE_OFFSET_BITS, PAGE_PRESENT | PAGE_WRITABLE | PAGE_GLOBAL | PAGE_USER);
 	map_pages(kernel_page_dir, KERNEL_PAGE_TABLE, get_page_info(kernel_page_dir, KERNEL_PAGE_TABLE), 1, PAGE_PRESENT | PAGE_WRITABLE | PAGE_GLOBAL);
 
 	kernel_address_space.page_dir = kernel_page_dir;

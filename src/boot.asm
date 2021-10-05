@@ -302,7 +302,7 @@ stage2:
 	mov dword[0x1FFC], 0x3000 + 111b	; last page table record, 8188 (0x1FFC) = 4096 (page directory base) + 4096 (page directory size) - 4 (size of one page directory record)
 	
 	; fill the first page table
-	mov eax, 11b
+	mov eax, 111b
 	mov cx, 0x100000 / 4096 ; map first 1 Mb
 	mov di, 0x2000 ; address (stosd)
  @@:
@@ -374,6 +374,12 @@ dt_data:
 	db 11001111b 		; granularity
 	db 0				; base high
 
+; user code segment
+	dq 0x00CFFA000000FFFF
+
+; user data segment
+	dq 0x00CFF2000000FFFF
+
 gdtr_data:
 	dw $ - dt_data - 1
 	dd dt_data
@@ -398,7 +404,7 @@ start32:
 
 	; put 'OK' to right bottom corner
 	mov byte[0xB8000 + (25 * 80 - 1) * 2], "K"
-	mov dword[0x3FFC], 0xB8000 + 11b ; map last page of last PTE to the video memory
+	mov dword[0x3FFC], 0xB8000 + 111b ; map last page of last PTE to the video memory
 	mov byte[0xFFFFF000 + (25 * 80 - 2) * 2], "O" ; display 'O' by above mapped memory
 
 	; put the memory map address to ESI
