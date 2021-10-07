@@ -380,6 +380,9 @@ dt_data:
 ; user data segment
 	dq 0x00CFF2000000FFFF
 
+; TSS:
+	dq 0x7F4089FFD0002FFF ; points to last three page of user address space
+
 gdtr_data:
 	dw $ - dt_data - 1
 	dd dt_data

@@ -50,8 +50,15 @@ void kernel_main(uint8 boot_disk_id, void *memory_map) {
 	}
 }
 
+uint32 get_current_esp () {
+	uint32 esp;
+	asm("movl %%esp, %0":"=a"(esp));
+	return esp;
+}
+
 void switch_to_user_mode()
 {
+	tss_set_stack(0x10, get_current_esp());
    	// Set up a stack structure for switching to user mode.
 	asm volatile("  \
 		cli; \
@@ -65,6 +72,9 @@ void switch_to_user_mode()
 		pushl $0x23; \
 		pushl %eax; \
 		pushf; \
+		pop %eax; \
+		or $0x200, %eax; \
+		push %eax; \
 		pushl $0x1B; \
 		push $1f; \
 		iret; \

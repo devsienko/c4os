@@ -63,6 +63,7 @@ typedef struct {
 phyaddr kernel_page_dir;
 size_t memory_size;
 AddressSpace kernel_address_space;
+AddressSpace user_address_space;
 
 void init_memory_manager(void *memory_map);
 
