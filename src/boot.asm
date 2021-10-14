@@ -412,8 +412,13 @@ start32:
 
 	; put the memory map address to ESI
 	mov esi, memory_map
+	
 	; put the boot disk number to DL
 	mov dl, [disk_id]
+	
+	; put the first file (in the root dir) header sector number
+	mov eax, dword[fs_first_file]
+	mov ebx, dword[fs_first_file + 4]
 
 	jmp 0xFFC00000 ; jump to kernel
 

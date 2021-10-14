@@ -13,6 +13,7 @@
 */
 #define DMA_MAX_CHANNELS 16
 #define DMA_CHANNELS_PER_DMAC 8
+#define TEMP_DMA_BUFFER_ADDR 0x20000
 
 /**
 *	DMA0 address/count registers

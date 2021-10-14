@@ -1,12 +1,14 @@
 #include "tty.h"
+#include "dma.h"
 #include "stdlib.h"
 #include "memory_manager.h"
 #include "interrupts.h"
 #include "floppy.h"
 #include "timer.h"
 #include "multitasking.h"
+#include "listfs.h"
 
-void kernel_main(uint8 boot_disk_id, void *memory_map) {
+void kernel_main(uint8 boot_disk_id, void *memory_map, uint64 first_file_sector_number) {
 	init_memory_manager(memory_map);
 	init_interrupts();
 	init_multitasking();
@@ -45,8 +47,35 @@ void kernel_main(uint8 boot_disk_id, void *memory_map) {
 			show_process_list();
 		else if(!strcmp("umode", buffer))
 			switch_to_user_mode();
+		else if(!strcmp("ls", buffer))
+			show_files((uint32)first_file_sector_number);
 		else 
 			printf("You typed: %s\n", buffer);
+	}
+}
+
+void show_files (uint32 file_sector_number) {
+	listfs_file_header *file_header = get_file_info_by(file_sector_number);
+	if(file_header == LISTFS_EMPTY)
+		return;
+	
+	printf("name: %s\n", file_header->name);
+
+	if(CHECK_BIT(file_header->flags, 1))
+		printf(" type: directory");
+	else
+		printf(" type: file\n");
+
+	if(file_header->parent == LISTFS_COMMON_INDICATOR)
+		printf(" directory: root\n");
+	else
+		printf(" directory: not root\n");
+
+	printf(" size: %d bytes\n", (uint32)file_header->size);
+	
+	if(file_header->next != LISTFS_COMMON_INDICATOR) {
+		printf("\n");
+		show_files((uint32)file_header->next);
 	}
 }
 
@@ -92,7 +121,7 @@ void init_floppy () {
 	flpydsk_install();
 
 	//! set DMA buffer to 64k
-	flpydsk_set_dma(0x12000);
+	flpydsk_set_dma(TEMP_DMA_BUFFER_ADDR);
 }
 
 bool is_last_memory_map_entry(struct memory_map_entry *entry);

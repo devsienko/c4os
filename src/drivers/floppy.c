@@ -117,7 +117,7 @@ const int FLPY_SECTORS_PER_TRACK = 18;
 
 // You can change this as needed. It must be below 16MB and in identity mapped memory!
 // todo: use physical memory manager
-int DMA_BUFFER = 0x12000;
+int DMA_BUFFER = 0x20000;
 
 // FDC uses DMA channel 2
 const uint8 FDC_DMA_CHANNEL = 2;
@@ -156,7 +156,7 @@ bool dma_initialize_floppy(uint8* buffer, unsigned length) {
 
    dma_set_address(FDC_DMA_CHANNEL, a.byte[0], a.byte[1]); //Buffer address
    
-   dma_set_external_page_register(2, a.byte[2]);
+   dma_set_external_page_register(2, a.byte[2]); // Page number
   
    dma_set_count(FDC_DMA_CHANNEL, c.byte[0], c.byte[1]); //Set count
    
@@ -423,7 +423,7 @@ uint8 flpydsk_get_working_drive () {
 }
 
 // read a sector
-uint8* flpydsk_read_sector (int sectorLBA) {
+uint8* flpydsk_read_sector (uint32 sectorLBA) {
 	if (current_drive >= 4)
 		return 0;
 

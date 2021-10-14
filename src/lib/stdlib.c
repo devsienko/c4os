@@ -11,16 +11,12 @@ void memset_word(void *mem, uint16 value, size_t count) {
 		::"a"((uint32)value | ((uint32)value << 16)),"b"(mem),"c"(count >> 1));
 }
 
-void memcpy(void *dest, void *src, size_t count) {
-	if (dest < src) {
-		asm("movl %0, %%edi \n movl %1, %%esi \n movl %2, %%ecx \n rep movsl"::"a"(dest),"b"(src),"c"(count >> 2));
-		asm("movl %0, %%ecx \n rep movsb"::"a"(count & 3));
-	} else {
-		asm("std");
-		asm("movl %0, %%edi \n movl %1, %%esi \n movl %2, %%ecx \n rep movsb"::"a"(dest + count),"b"(src + count),"c"(count & 3));
-		asm("movl %0, %%ecx \n rep movsl"::"c"(count >> 2));
-		asm("cld");
-	}
+void *memcpy (void *dest, void *src, size_t len) {
+  char *d = dest;
+  const char *s = src;
+  while (len--)
+    *d++ = *s++;
+  return dest;
 }
 
 int memcmp(void *mem1, void *mem2, size_t count) {
