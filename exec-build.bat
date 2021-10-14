@@ -1,0 +1,1 @@
+fasm src\exec\first.asm bin\disk\first.bin

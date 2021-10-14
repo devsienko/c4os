@@ -66,6 +66,4 @@ void init_multitasking();
 void switch_task(Registers *regs);
 void tss_set_stack(uint32 ss, uint32 esp);
 
-Thread *create_thread(Process *process, void *entry_point, size_t stack_size, bool kernel, bool suspend);
-
 #endif
