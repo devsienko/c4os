@@ -25,11 +25,10 @@ unsigned int key_buffer_tail = 0;
 void keyboard_int_handler();
 
 void init_tty() {
-	tty_buffer = alloc_virt_pages(&kernel_address_space, NULL, 0xB8000, 1, PAGE_PRESENT | PAGE_WRITABLE | PAGE_USER);
+	tty_buffer = alloc_virt_pages(&kernel_address_space, NULL, 0xB8000, 1, PAGE_PRESENT | PAGE_WRITABLE);
 	tty_width = *((uint16*)0x44A);
 	tty_height = 25;
 	tty_io_port = *((uint16*)0x463);
-	// cursor = (*((uint8*)0x451)) * tty_width + (*((uint8*)0x450));
     cursor = 0;
 	text_attr = 7;
 }

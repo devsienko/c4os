@@ -59,10 +59,11 @@ void set_int_handler(uint8 index, void *handler, uint8 type) {
 }
 
 void irq_handler(uint32 index, Registers *regs) {
+	uint32 esp = (int)&regs;
 	switch (index) {
 		case 0:
 			inc_pit_ticks();
-			switch_task(regs);
+			switch_task(regs, esp);
 			break;
 		case 1:
 			keyboard_interrupt();

@@ -299,10 +299,10 @@ stage2:
 	rep stosw
 	; fill the page directory that starts at 4096 (0x1000)
 	mov dword[0x1000], 0x2000 + 111b ; points to first page table
-	mov dword[0x1FFC], 0x3000 + 111b	; last page table record, 8188 (0x1FFC) = 4096 (page directory base) + 4096 (page directory size) - 4 (size of one page directory record)
+	mov dword[0x1FFC], 0x3000 + 111b ; last page table record, 8188 (0x1FFC) = 4096 (page directory base) + 4096 (page directory size) - 4 (size of one page directory record)
 	
 	; fill the first page table
-	mov eax, 111b
+	mov eax, 11b
 	mov cx, 0x100000 / 4096 ; map first 1 Mb
 	mov di, 0x2000 ; address (stosd)
  @@:
@@ -319,7 +319,8 @@ stage2:
 	stosd
 	add eax, 0x1000
 	loop @b
-	mov dword[0x3FF4], 0x4000 + 11b ; Kernel stack
+
+	; mov dword[0x3FF4], 0x4000 + 11b ; Kernel stack
 	mov dword[0x3FF8], 0x3000 + 11b ; Kernel page table
 
 	; load page directory to CR3
@@ -407,7 +408,7 @@ start32:
 
 	; put 'OK' to right bottom corner
 	mov byte[0xB8000 + (25 * 80 - 1) * 2], "K"
-	mov dword[0x3FFC], 0xB8000 + 111b ; map last page of last PTE to the video memory
+	mov dword[0x3FFC], 0xB8000 + 11b ; map last page of last PTE to the video memory
 	mov byte[0xFFFFF000 + (25 * 80 - 2) * 2], "O" ; display 'O' by above mapped memory
 
 	; put the memory map address to ESI

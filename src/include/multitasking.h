@@ -4,6 +4,8 @@
 #include "stdlib.h"
 #include "interrupts.h"
 
+#define USER_PROGRAM_BASE 0x100000 // all exec binaries are started there
+
 typedef struct {
 	uint32 reserved_1;
 	uint32 esp0;
@@ -63,7 +65,10 @@ Process *kernel_process;
 Thread *kernel_thread;
 
 void init_multitasking();
-void switch_task(Registers *regs);
+void switch_task(Registers *regs, uint32 esp);
 void tss_set_stack(uint32 ss, uint32 esp);
+
+void run_image(phyaddr proc_image_start, char file_name[]);
+Thread *create_thread(Process *process, void *entry_point, size_t stack_size, bool kernel, bool suspend);
 
 #endif

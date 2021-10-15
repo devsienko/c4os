@@ -34,7 +34,7 @@ void kernel_main(uint8 boot_disk_id, void *memory_map, uint64 first_file_sector_
 			kernel_address_space.blocks[i].length);
 	}
 	printf("\n");
-
+	
 	while (true) {
 		char buffer[256];
 		out_string("Command>");
@@ -45,8 +45,6 @@ void kernel_main(uint8 boot_disk_id, void *memory_map, uint64 first_file_sector_
 			cmd_get_ticks();
 		else if(!strcmp("ps", buffer))
 			show_process_list();
-		else if(!strcmp("umode", buffer))
-			switch_to_user_mode();
 		else if(!strcmp("ls", buffer))
 			show_files((uint32)first_file_sector_number);
 		else if(!strcmp("run", buffer))
@@ -85,34 +83,6 @@ uint32 get_current_esp () {
 	uint32 esp;
 	asm("movl %%esp, %0":"=a"(esp));
 	return esp;
-}
-
-void switch_to_user_mode()
-{
-	tss_set_stack(0x10, get_current_esp());
-   	// Set up a stack structure for switching to user mode.
-	asm volatile("  \
-		cli; \
-		mov $0x23, %ax; \
-		mov %ax, %ds; \
-		mov %ax, %es; \
-		mov %ax, %fs; \
-		mov %ax, %gs; \
-					\
-		mov %esp, %eax; \
-		pushl $0x23; \
-		pushl %eax; \
-		pushf; \
-		pop %eax; \
-		or $0x200, %eax; \
-		push %eax; \
-		pushl $0x1B; \
-		push $1f; \
-		iret; \
-	1: \
-		");
-	printf("Hello, user world!");
-	while(true) {}
 }
 
 void init_floppy () { 
@@ -242,15 +212,18 @@ phyaddr alloc_dma_buffer() {
 	return buffer;
 }
 
-typedef void (*func_t)(void);
-
 void run_new_process(uint32 file_sector_number) {
 	char file_name[256] = "first.bin";
-	printf("first.bin has started: ", file_name);
 
 	uint32 file_data_sector_number = find_file(file_sector_number, file_name);
 	phyaddr dma_buffer = alloc_dma_buffer();
 	(uint8*)flpydsk_read_sector(file_data_sector_number);
 	
-	((func_t)dma_buffer)();
+	phyaddr proc_image_start = alloc_phys_pages(1);
+	temp_map_page(proc_image_start);
+	uint16 floppy_sector_size = 512;
+	//I don't map dma_buffer because of identity mapping the first megabyte
+	memcpy((void*)TEMP_PAGE, (void*)dma_buffer, floppy_sector_size);
+
+	run_image(proc_image_start, file_name);
 }
