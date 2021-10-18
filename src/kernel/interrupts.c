@@ -5,6 +5,7 @@
 #include "tty.h"
 #include "timer.h"
 #include "floppy.h"
+#include "syscall.h";
 
 void (*irq_handlers[])();
 void irq_handler(uint32 index, Registers *regs);
@@ -45,6 +46,7 @@ void init_interrupts() {
 	for (i = 0; i < 16; i++) {
 		set_int_handler(irq_base + i, irq_handlers[i], 0x8E);
 	}
+	set_int_handler(irq_base + i, irq_handlers[i], 0xEE); // handler for system calls interrupt
 	asm("sti");
 }
 
@@ -71,5 +73,7 @@ void irq_handler(uint32 index, Registers *regs) {
 		case 6: 
 			i86_flpy_irq();
 			break;
+		case 16: 
+			syscall_handler(regs);
 	}
 }

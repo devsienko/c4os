@@ -13,6 +13,7 @@ gcc src\kernel\timer.c -o bin\timer.o -c -I %OS_INCLUDE_PATH%
 gcc src\drivers\tty.c -o bin\tty.o -c -I %OS_INCLUDE_PATH%
 gcc src\drivers\dma.c -o bin\dma.o -c -I %OS_INCLUDE_PATH%
 gcc src\drivers\floppy.c -o bin\floppy.o -c -I %OS_INCLUDE_PATH%
+gcc src\kernel\syscall.c -o bin\syscall.o -c -I %OS_INCLUDE_PATH%
 
-ld -T src\kernel\kernel.ld -o bin\disk\kernel.bin bin\startup.o bin\stdlib.o bin\multitasking.o bin\memory_manager.o bin\main.o bin\timer.o bin\listfs.o bin\tty.o bin\dma.o bin\floppy.o bin\interrupts_asm.o bin\interrupts.o
+ld -T src\kernel\kernel.ld -o bin\disk\kernel.bin bin\startup.o bin\stdlib.o bin\multitasking.o bin\memory_manager.o bin\main.o bin\timer.o bin\listfs.o bin\tty.o bin\dma.o bin\floppy.o bin\interrupts_asm.o bin\interrupts.o bin\syscall.o
 objcopy bin\disk\kernel.bin -O binary

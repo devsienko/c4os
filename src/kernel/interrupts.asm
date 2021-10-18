@@ -12,7 +12,7 @@ IRQ # index # _handler:
 	jmp common_irq_handler	
 }
 
-rept 16 i {
+rept 17 i {
 	IRQ_handler i
 }
 
@@ -29,7 +29,7 @@ common_irq_handler:
 	push edx
 	push eax
 	call _irq_handler
-	add esp, 2 * 4
+	add esp, 2 * 4 ; we clean the  (because before we pushed edx (4 bytes) and eax (4 bytes)). More detalis 22:55 of https://www.youtube.com/watch?v=ySOm8CdpnXI
 	pop gs fs es ds
 	pop ebp edi esi edx ecx ebx
 	mov al, 0x20
@@ -42,6 +42,6 @@ section ".data" writable
 
 ; interrupt handlers table
 _irq_handlers:
-	rept 16 i {
+	rept 17 i {
 		dd IRQ # i # _handler
 	} 
