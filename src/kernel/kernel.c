@@ -47,8 +47,8 @@ void kernel_main(uint8 boot_disk_id, void *memory_map, uint64 first_file_sector_
 			show_process_list();
 		else if(!strcmp("ls", buffer))
 			show_files((uint32)first_file_sector_number);
-		else if(!strcmp("run", buffer))
-			run_new_process((uint32)first_file_sector_number);
+		else if(is_there_exe((uint32)first_file_sector_number, buffer))
+			run_new_process((uint32)first_file_sector_number, buffer);
 		else 
 			printf("You typed: %s\n", buffer);
 	}
@@ -187,7 +187,7 @@ void show_process_list() {
 uint32 get_file_data_pointer(uint32 sector_list_sector_number) {
 	//we support only 1-sector size files right now, so it's a little bit crazy function
 	uint64 *sector_list = flpydsk_read_sector(sector_list_sector_number);
-	uint32 result = -1;
+	uint32 result = LISTFS_COMMON_INDICATOR;
 	for(int i = 0; ; i++) {
 		if(sector_list[i] == LISTFS_COMMON_INDICATOR)
 			break;
@@ -199,11 +199,18 @@ uint32 get_file_data_pointer(uint32 sector_list_sector_number) {
 uint32 find_file(uint32 file_sector_number, char* file_name) {
 	listfs_file_header *file_header = get_file_info_by(file_sector_number);
 	
-	if(strcmp(file_name, file_header->name) && file_header->next != LISTFS_COMMON_INDICATOR) 
-		return find_file((uint32)file_header->next, file_name);
-	else {
+	if(!strcmp(file_name, file_header->name)) 
 		return get_file_data_pointer((uint32)file_header->data);
-	}
+	if(file_header->next == LISTFS_COMMON_INDICATOR)
+		return LISTFS_COMMON_INDICATOR;
+	
+	return find_file((uint32)file_header->next, file_name);
+}
+
+int is_there_exe (uint32 file_sector_number, char* file_name) { 
+	if (find_file(file_sector_number, file_name) == LISTFS_COMMON_INDICATOR)
+		return 0;
+	return 1;
 }
 
 phyaddr alloc_dma_buffer() {
@@ -212,9 +219,8 @@ phyaddr alloc_dma_buffer() {
 	return buffer;
 }
 
-void run_new_process(uint32 file_sector_number) {
-	char file_name[256] = "first.bin";
-
+void run_new_process(uint32 file_sector_number, char* file_name) {
+	printf("%s starting...\n", file_name);
 	uint32 file_data_sector_number = find_file(file_sector_number, file_name);
 	phyaddr dma_buffer = alloc_dma_buffer();
 	(uint8*)flpydsk_read_sector(file_data_sector_number);
@@ -226,4 +232,5 @@ void run_new_process(uint32 file_sector_number) {
 	memcpy((void*)TEMP_PAGE, (void*)dma_buffer, floppy_sector_size);
 
 	run_image(proc_image_start, file_name);
+	printf("%s have started.\n", file_name);
 }
