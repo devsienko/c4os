@@ -1,1 +1,4 @@
+/bin
+/make_listfs/make_listfs.exe
 /*.bin
+/bx_enh_dbg.ini
